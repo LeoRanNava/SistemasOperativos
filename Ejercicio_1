@@ -8,7 +8,7 @@ echo 'Inciando script de monitoreo...'
 REMOTE_USER="so2025II"
 REMOTE_HOST="pacifico.izt.uam.mx" #AQUI TENEMOS EL SERVIDOR A DONDE NOS CONECTAREMOS
 FECHA=$(date +%F) #FECHA LO HACE ES GUARDARLO EN FORMATO DE AÑO-MES-DIA
-LLAVE="./so_llave"
+LLAVE="./so_llave" #Llave para poder entrar al servidor y no pida password
 ARCHIVO="log_servicios_$FECHA.json" #ESTE SERA EL ARCHIVO DE SALIDA 
 
 echo "{" > $ARCHIVO #echo:imprime texto, >:redireccion de salida(sobreescribe el archivo, si no existe lo creea, si existe borra todo y escribe desde cero)
