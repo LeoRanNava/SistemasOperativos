@@ -1,0 +1,73 @@
+#!/bin/bash
+# Autor: Leonardo Rangel Nava
+# Script practica 1
+
+
+echo 'Inciando script de monitoreo...' 
+
+REMOTE_USER="so2025II"
+REMOTE_HOST="pacifico.izt.uam.mx" #AQUI TENEMOS EL SERVIDOR A DONDE NOS CONECTAREMOS
+FECHA=$(date +%F) #FECHA LO HACE ES GUARDARLO EN FORMATO DE AÑO-MES-DIA
+LLAVE="./so_llave"
+ARCHIVO="log_servicios_$FECHA.json" #ESTE SERA EL ARCHIVO DE SALIDA 
+
+echo "{" > $ARCHIVO #echo:imprime texto, >:redireccion de salida(sobreescribe el archivo, si no existe lo creea, si existe borra todo y escribe desde cero)
+		    #$ARCHIVO: varibale declarada, despues guarda el nombre de un archivo (ARCHIVO=datos.json)
+
+echo "\"fecha\": \"$FECHA\"," >> $ARCHIVO #escribe la fecha dentro del json
+echo "\"host\": \"$REMOTE_HOST\"," >> $ARCHIVO #escribe el nombre del archivo
+echo "\"verificaciones\": [" >> $ARCHIVO #Inicia el arreglo donde iran los servicions, se hace arreglo para guardar varios elementos en forma de lista
+
+PRIMERO=1 #Varibale para saber si es el primer servicio
+
+#La siguiente linea lo que hace es Leer el archivo json, en este caso sera el archivo servicios.json
+# empezamos con un bucle for, SERVICIO toma un valor a la vez, el cat leee el archivo, gre '""' toma lineas con comillas, grep -v servicios quita la palbra servicios, tr-d '",' quita comillas y comas, y al final el for recorre cada servicio
+for SERVICIO in $(cat servicios.json | grep '"' | grep -v servicios | tr -d '",' | tr -d ' '); do
+
+#PRIMERO=1 funciona como bandera 1 todavia no he escrito ningun elemento y 0 ya escribi al menos uno,  significa igual a
+if [ $PRIMERO -eq 0 ]; then
+	echo "," >> $ARCHIVO
+fi
+PRIMERO=0
+
+#HACEMOS VERIFICAION CON systemcl
+#el 2>/dev/null redirecciona errores, 2 salida error y lo demas dice mandalo a la basura
+ESTADO=$(ssh -i "$LLAVE" $REMOTE_USER@$REMOTE_HOST "systemctl is-active $SERVICIO" 2>/dev/null)
+
+#Si esta activo hace lo siguiente
+if [ "$ESTADO" = "active" ]; then
+ESTADO_FINAL="activo"
+METODO="systemctl"
+DETALLE="active"
+#Si no esta activo usamos ps aux que eso nos muerta todos los procesos en el sistema
+else
+PROCESO=$(ssh -i "$LLAVE" $REMOTE_USER@$REMOTE_HOST "ps aux | grep $SERVICIO | grep -v grep") #Busca el servicio como proceso
+
+if [ -n "$PROCESO" ]; then #si encontro algo  muestra los sigueinte
+ESTADO_FINAL="activo"
+METODO="ps"
+DETALLE="proceso encontrado"
+else #si no encuentra procesos hace lo siguiente
+ESTADO_FINAL="inactivo"
+METODO="ps"
+DETALLE="sin procesos"
+fi
+fi #cierre de decisiones
+
+##ESCRIBIMOS CADA SERVICIO EN EL JSON QUE SE SOLICITO
+echo "{" >> $ARCHIVO
+echo "\"servicio\": \"$SERVICIO\"," >> $ARCHIVO
+echo "\"metodo\": \"$METODO\"," >> $ARCHIVO
+echo "\"estado\": \"$ESTADO_FINAL\"," >> $ARCHIVO
+echo "\"detalle\": \"$DETALLE\"" >> $ARCHIVO
+echo "}">> $ARCHIVO
+done #termina el ciclo
+
+#cierre del arreglo y del objeto principal
+
+echo "]" >> $ARCHIVO
+echo "}" >> $ARCHIVO 
+
+#MENSAJE FINAL
+
+echo "ARCHIVO GENERADO: $ARCHIVO"
